@@ -26,4 +26,43 @@ impl Cache {
             }
         }
     }
+
+    pub fn invalidate(&self, key: String) {
+        self.storage.del(&key);
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn cache() {
+        use super::memory::InMemoryStorage;
+        use super::Cache;
+
+        let storage = InMemoryStorage::new(10);
+        let cache = Cache::new(Box::new(storage));
+
+        let data = cache.cache("foo".to_string(), Box::new(|| "test".to_string()));
+        assert_eq!(data, "test".to_string());
+
+        let data = cache.cache("foo".to_string(), Box::new(|| "test2".to_string()));
+        assert_eq!(data, "test".to_string());
+    }
+
+    #[test]
+    fn invalidate() {
+        use super::memory::InMemoryStorage;
+        use super::Cache;
+
+        let storage = InMemoryStorage::new(10);
+        let cache = Cache::new(Box::new(storage));
+
+        let data = cache.cache("foo".to_string(), Box::new(|| "test".to_string()));
+        assert_eq!(data, "test".to_string());
+
+        cache.invalidate("foo".to_string());
+
+        let data = cache.cache("foo".to_string(), Box::new(|| "test2".to_string()));
+        assert_eq!(data, "test2".to_string());
+    }
 }
