@@ -1,7 +1,8 @@
+mod memory;
+
 pub trait Storable {
     fn get(&self, key: &str) -> Option<String>;
     fn set(&self, key: &str, value: &str);
-    fn ttl(&self, key: &str) -> Option<u64>;
     fn del(&self, key: &str);
 }
 
