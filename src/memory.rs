@@ -1,4 +1,5 @@
-use moka::sync::Cache as MokaCache;
+use async_trait::async_trait;
+use moka::future::Cache as MokaCache;
 
 use crate::Storable;
 
@@ -15,17 +16,18 @@ impl InMemoryStorage {
     }
 }
 
+#[async_trait]
 impl Storable for InMemoryStorage {
-    fn get(&self, key: &str) -> Option<String> {
-        self.cache.get(key)
+    async fn get(&self, key: &str) -> Option<String> {
+        self.cache.get(key).await
     }
 
-    fn set(&self, key: &str, value: &str) {
-        self.cache.insert(key.to_string(), value.to_string());
+    async fn set(&self, key: &str, value: &str) {
+        self.cache.insert(key.to_string(), value.to_string()).await;
     }
 
-    fn del(&self, key: &str) {
-        self.cache.remove(key);
+    async fn del(&self, key: &str) {
+        self.cache.remove(key).await;
     }
 }
 
@@ -33,28 +35,28 @@ impl Storable for InMemoryStorage {
 mod tests {
     use crate::Storable;
 
-    #[test]
-    fn get_set_values() {
+    #[tokio::test]
+    async fn get_set_values() {
         use super::InMemoryStorage;
         let storage = InMemoryStorage::new(10);
-        assert_eq!(storage.get("foo"), None);
+        assert_eq!(storage.get("foo").await, None);
 
-        storage.set("foo", "test");
+        storage.set("foo", "test").await;
 
-        assert_eq!(storage.get("foo"), Some("test".to_string()));
+        assert_eq!(storage.get("foo").await, Some("test".to_string()));
     }
 
-    #[test]
-    fn del_values() {
+    #[tokio::test]
+    async fn del_values() {
         use super::InMemoryStorage;
         let storage = InMemoryStorage::new(10);
 
-        storage.set("foo", "test");
+        storage.set("foo", "test").await;
 
-        assert_eq!(storage.get("foo"), Some("test".to_string()));
+        assert_eq!(storage.get("foo").await, Some("test".to_string()));
 
-        storage.del("foo");
+        storage.del("foo").await;
 
-        assert_eq!(storage.get("foo"), None);
+        assert_eq!(storage.get("foo").await, None);
     }
 }

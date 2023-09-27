@@ -1,11 +1,12 @@
 mod memory;
-
+use async_trait::async_trait;
 use std::future::Future;
 
+#[async_trait]
 pub trait Storable {
-    fn get(&self, key: &str) -> Option<String>;
-    fn set(&self, key: &str, value: &str);
-    fn del(&self, key: &str);
+    async fn get(&self, key: &str) -> Option<String>;
+    async fn set(&self, key: &str, value: &str);
+    async fn del(&self, key: &str);
 }
 
 pub struct Cache<S: Storable> {
@@ -22,19 +23,19 @@ impl<S: Storable> Cache<S> {
         F: Fn() -> Fut,
         Fut: Future<Output = String>,
     {
-        let data = self.storage.get(&key);
+        let data = self.storage.get(&key).await;
         match data {
             Some(data) => data,
             None => {
                 let data = get_data().await;
-                self.storage.set(&key, &data);
+                self.storage.set(&key, &data).await;
                 data
             }
         }
     }
 
-    pub fn invalidate(&self, key: String) {
-        self.storage.del(&key);
+    pub async fn invalidate(&self, key: String) {
+        self.storage.del(&key).await;
     }
 }
 
@@ -71,7 +72,7 @@ mod tests {
             .await;
         assert_eq!(data, "test".to_string());
 
-        cache.invalidate("foo".to_string());
+        cache.invalidate("foo".to_string()).await;
 
         let data = cache
             .cache("foo".to_string(), || async { "test2".to_string() })
