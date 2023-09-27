@@ -79,4 +79,41 @@ mod tests {
             .await;
         assert_eq!(data, "test2".to_string());
     }
+
+    #[tokio::test]
+    async fn concurrent_requests() {
+        use super::memory::InMemoryStorage;
+        use super::Cache;
+        use std::sync::Arc;
+        // use tokio::sync::Mutex;
+
+        let storage = InMemoryStorage::new(10);
+        let cache = Arc::new(Cache::new::<InMemoryStorage>(storage));
+
+        let cache1 = cache.clone();
+        let cache2 = cache.clone();
+
+        let data1 = tokio::spawn(async move {
+            cache1
+                .cache("foo".to_string(), || async {
+                    tokio::time::sleep(std::time::Duration::from_millis(1)).await;
+                    "test".to_string()
+                })
+                .await
+        });
+
+        let data2 = tokio::spawn(async move {
+            cache2
+                .cache("foo".to_string(), || async {
+                    tokio::time::sleep(std::time::Duration::from_millis(1)).await;
+                    "test2".to_string()
+                })
+                .await
+        });
+
+        let data1 = data1.await.unwrap();
+        let data2 = data2.await.unwrap();
+
+        assert_eq!(data1, data2);
+    }
 }
