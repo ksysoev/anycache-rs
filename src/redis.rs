@@ -46,11 +46,7 @@ mod tests {
 
     #[tokio::test]
     async fn get_set_values() {
-        let mut redis_url = env::var("REDIS_URL").unwrap();
-        if redis_url == "" {
-            redis_url = "redis://localhost:6379".to_string();
-        }
-
+        let redis_url = env::var("REDIS_URL").unwrap_or("redis://localhost:6379".to_string());
         let redis = Client::open(redis_url).unwrap();
 
         let storage = RedisStorage::new(redis);
@@ -71,11 +67,7 @@ mod tests {
 
     #[tokio::test]
     async fn del_values() {
-        let mut redis_url = env::var("REDIS_URL").unwrap();
-        if redis_url == "" {
-            redis_url = "redis://localhost:6379".to_string();
-        }
-
+        let redis_url = env::var("REDIS_URL").unwrap_or("redis://localhost:6379".to_string());
         let redis = Client::open(redis_url).unwrap();
 
         let storage = RedisStorage::new(redis);
