@@ -48,7 +48,7 @@ mod tests {
     async fn get_set_values() {
         let mut redis_url = env::var("REDIS_URL").unwrap();
         if redis_url == "" {
-            redis_url = "redis://127.0.0.1:6379".to_string();
+            redis_url = "redis://localhost:6379".to_string();
         }
 
         let redis = Client::open(redis_url).unwrap();
@@ -73,7 +73,7 @@ mod tests {
     async fn del_values() {
         let mut redis_url = env::var("REDIS_URL").unwrap();
         if redis_url == "" {
-            redis_url = "redis://127.0.0.1:6379".to_string();
+            redis_url = "redis://localhost:6379".to_string();
         }
 
         let redis = Client::open(redis_url).unwrap();

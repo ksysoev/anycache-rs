@@ -22,7 +22,7 @@ pub struct Cache<S: Storable> {
 impl<S: Storable> Cache<S> {
     pub fn new<T>(storage: S) -> Self {
         Self {
-            storage: storage,
+            storage,
             queue: Arc::new(Mutex::new(HashMap::new())),
         }
     }
