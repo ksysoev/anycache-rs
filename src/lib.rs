@@ -86,29 +86,61 @@ impl<S: Storable> Cache<S> {
 }
 
 mod tests {
+
     #[tokio::test]
-    async fn cache() {
+    async fn cache_inmemory() {
         use super::memory::InMemoryStorage;
         use super::Cache;
 
         let storage = InMemoryStorage::new(10);
         let cache = Cache::new::<InMemoryStorage>(storage);
-
         let data = cache
-            .cache("foo".to_string(), || async { "test".to_string() })
+            .cache("cache_inmemory".to_string(), || async {
+                "test".to_string()
+            })
             .await
             .unwrap();
         assert_eq!(data, "test".to_string());
 
         let data = cache
-            .cache("foo".to_string(), || async { "test2".to_string() })
+            .cache("cache_inmemory".to_string(), || async {
+                "test2".to_string()
+            })
             .await
             .unwrap();
         assert_eq!(data, "test".to_string());
     }
 
     #[tokio::test]
-    async fn invalidate() {
+    async fn cache_redis() {
+        use super::redis::RedisStorage;
+        use super::Cache;
+        use redis::Client;
+        use std::env;
+
+        let redis_url = env::var("REDIS_URL").unwrap_or("redis://localhost:6379".to_string());
+        let storage = RedisStorage::new(Client::open(redis_url).unwrap());
+        let cache = Cache::new::<RedisStorage>(storage);
+
+        cache.invalidate("cache_redis".to_string()).await.unwrap();
+
+        let data = cache
+            .cache("cache_redis".to_string(), || async { "test".to_string() })
+            .await
+            .unwrap();
+        assert_eq!(data, "test".to_string());
+
+        let data = cache
+            .cache("cache_redis".to_string(), || async { "test2".to_string() })
+            .await
+            .unwrap();
+        assert_eq!(data, "test".to_string());
+
+        cache.invalidate("cache_redis".to_string()).await.unwrap();
+    }
+
+    #[tokio::test]
+    async fn invalidate_inmemory() {
         use super::memory::InMemoryStorage;
         use super::Cache;
 
@@ -116,22 +148,72 @@ mod tests {
         let cache = Cache::new::<InMemoryStorage>(storage);
 
         let data = cache
-            .cache("foo".to_string(), || async { "test".to_string() })
+            .cache("invalidate_inmemory".to_string(), || async {
+                "test".to_string()
+            })
             .await
             .unwrap();
         assert_eq!(data, "test".to_string());
 
-        cache.invalidate("foo".to_string()).await.unwrap();
+        cache
+            .invalidate("invalidate_inmemory".to_string())
+            .await
+            .unwrap();
 
         let data = cache
-            .cache("foo".to_string(), || async { "test2".to_string() })
+            .cache("invalidate_inmemory".to_string(), || async {
+                "test2".to_string()
+            })
             .await
             .unwrap();
         assert_eq!(data, "test2".to_string());
     }
 
     #[tokio::test]
-    async fn concurrent_requests() {
+    async fn invalidate_redis() {
+        use super::redis::RedisStorage;
+        use super::Cache;
+        use redis::Client;
+        use std::env;
+
+        let redis_url = env::var("REDIS_URL").unwrap_or("redis://localhost:6379".to_string());
+        let storage = RedisStorage::new(Client::open(redis_url).unwrap());
+        let cache = Cache::new::<RedisStorage>(storage);
+
+        cache
+            .invalidate("invalidate_redis".to_string())
+            .await
+            .unwrap();
+
+        let data = cache
+            .cache("invalidate_redis".to_string(), || async {
+                "test".to_string()
+            })
+            .await
+            .unwrap();
+        assert_eq!(data, "test".to_string());
+
+        cache
+            .invalidate("invalidate_redis".to_string())
+            .await
+            .unwrap();
+
+        let data = cache
+            .cache("invalidate_redis".to_string(), || async {
+                "test2".to_string()
+            })
+            .await
+            .unwrap();
+        assert_eq!(data, "test2".to_string());
+
+        cache
+            .invalidate("invalidate_redis".to_string())
+            .await
+            .unwrap();
+    }
+
+    #[tokio::test]
+    async fn concurrent_inmemory() {
         use super::memory::InMemoryStorage;
         use super::Cache;
         use std::sync::Arc;
@@ -145,7 +227,7 @@ mod tests {
 
         let data1 = tokio::spawn(async move {
             cache1
-                .cache("foo".to_string(), || async {
+                .cache("concurrent_inmemory".to_string(), || async {
                     tokio::time::sleep(std::time::Duration::from_millis(1)).await;
                     "test".to_string()
                 })
@@ -155,7 +237,7 @@ mod tests {
 
         let data2 = tokio::spawn(async move {
             cache2
-                .cache("foo".to_string(), || async {
+                .cache("concurrent_inmemory".to_string(), || async {
                     tokio::time::sleep(std::time::Duration::from_millis(1)).await;
                     "test2".to_string()
                 })
@@ -167,5 +249,56 @@ mod tests {
         let data2 = data2.await.unwrap();
 
         assert_eq!(data1, data2);
+    }
+
+    #[tokio::test]
+    async fn concurrent_redis() {
+        use super::redis::RedisStorage;
+        use super::Cache;
+        use redis::Client;
+        use std::env;
+        use std::sync::Arc;
+
+        let redis_url = env::var("REDIS_URL").unwrap_or("redis://localhost:6379".to_string());
+        let storage = RedisStorage::new(Client::open(redis_url).unwrap());
+        let cache = Arc::new(Cache::new::<RedisStorage>(storage));
+
+        let cache1 = cache.clone();
+        let cache2 = cache.clone();
+
+        cache
+            .invalidate("concurrent_redis".to_string())
+            .await
+            .unwrap();
+
+        let data1 = tokio::spawn(async move {
+            cache1
+                .cache("concurrent_redis".to_string(), || async {
+                    tokio::time::sleep(std::time::Duration::from_millis(1)).await;
+                    "test".to_string()
+                })
+                .await
+                .unwrap()
+        });
+
+        let data2 = tokio::spawn(async move {
+            cache2
+                .cache("concurrent_redis".to_string(), || async {
+                    tokio::time::sleep(std::time::Duration::from_millis(1)).await;
+                    "test2".to_string()
+                })
+                .await
+                .unwrap()
+        });
+
+        let data1 = data1.await.unwrap();
+        let data2 = data2.await.unwrap();
+
+        assert_eq!(data1, data2);
+
+        cache
+            .invalidate("concurrent_redis".to_string())
+            .await
+            .unwrap();
     }
 }
