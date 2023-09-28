@@ -1,7 +1,7 @@
 use async_trait::async_trait;
 use redis::{aio::Connection, AsyncCommands, Client};
 
-use crate::Storable;
+use crate::{Result, Storable, StorageError};
 
 pub struct RedisStorage {
     redis: Client,
@@ -21,19 +21,25 @@ impl RedisStorage {
 
 #[async_trait]
 impl Storable for RedisStorage {
-    async fn get(&self, key: &str) -> Option<String> {
+    async fn get(&self, key: &str) -> Result<Option<String>> {
         let mut conn = self.get_conn().await;
-        conn.get(key).await.unwrap()
+        conn.get(key)
+            .await
+            .map_err(|_| StorageError::ConnectionError)
     }
 
-    async fn set(&self, key: &str, value: &str) {
+    async fn set(&self, key: &str, value: &str) -> Result<()> {
         let mut conn = self.get_conn().await;
-        let _: () = conn.set(key, value).await.unwrap();
+        conn.set(key, value)
+            .await
+            .map_err(|_| StorageError::ConnectionError)
     }
 
-    async fn del(&self, key: &str) {
+    async fn del(&self, key: &str) -> Result<()> {
         let mut conn = self.get_conn().await;
-        let _: () = conn.del(key).await.unwrap();
+        conn.del(key)
+            .await
+            .map_err(|_| StorageError::ConnectionError)
     }
 }
 
@@ -50,19 +56,18 @@ mod tests {
         let redis = Client::open(redis_url).unwrap();
 
         let storage = RedisStorage::new(redis);
-        let _: () = storage.del("get_set_values").await;
 
-        assert_eq!(storage.get("get_set_values").await, None);
+        assert_eq!(storage.get("get_set_values").await.unwrap(), None);
 
-        storage.set("get_set_values", "test").await;
+        storage.set("get_set_values", "test").await.unwrap();
 
         assert_eq!(
-            storage.get("get_set_values").await,
+            storage.get("get_set_values").await.unwrap(),
             Some("test".to_string())
         );
 
         // Cleanup
-        let _: () = storage.del("get_set_values").await;
+        storage.del("get_set_values").await.unwrap();
     }
 
     #[tokio::test]
@@ -72,12 +77,15 @@ mod tests {
 
         let storage = RedisStorage::new(redis);
 
-        storage.set("del_values", "test").await;
+        storage.set("del_values", "test").await.unwrap();
 
-        assert_eq!(storage.get("del_values").await, Some("test".to_string()));
+        assert_eq!(
+            storage.get("del_values").await.unwrap(),
+            Some("test".to_string())
+        );
 
-        storage.del("del_values").await;
+        storage.del("del_values").await.unwrap();
 
-        assert_eq!(storage.get("del_values").await, None);
+        assert_eq!(storage.get("del_values").await.unwrap(), None);
     }
 }

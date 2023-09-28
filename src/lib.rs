@@ -7,11 +7,19 @@ use std::future::Future;
 use std::sync::Arc;
 use tokio::sync::Mutex;
 
+#[derive(Debug)]
+pub enum StorageError {
+    ConnectionError,
+    GeneratorError,
+}
+
+pub type Result<T> = std::result::Result<T, StorageError>;
+
 #[async_trait]
 pub trait Storable {
-    async fn get(&self, key: &str) -> Option<String>;
-    async fn set(&self, key: &str, value: &str);
-    async fn del(&self, key: &str);
+    async fn get(&self, key: &str) -> Result<Option<String>>;
+    async fn set(&self, key: &str, value: &str) -> Result<()>;
+    async fn del(&self, key: &str) -> Result<()>;
 }
 
 pub struct Cache<S: Storable> {
@@ -27,7 +35,7 @@ impl<S: Storable> Cache<S> {
         }
     }
 
-    pub async fn cache<C, F>(&self, key: String, get_data: C) -> String
+    pub async fn cache<C, F>(&self, key: String, get_data: C) -> Result<String>
     where
         F: Future<Output = String>,
         C: Fn() -> F,
@@ -46,11 +54,11 @@ impl<S: Storable> Cache<S> {
                 guard.insert(key.clone(), vec![]);
                 drop(guard);
 
-                let data = match self.storage.get(&key).await {
+                let data = match self.storage.get(&key).await? {
                     Some(data) => data,
                     None => {
                         let data = get_data().await;
-                        self.storage.set(&key, &data).await;
+                        self.storage.set(&key, &data).await?;
                         data
                     }
                 };
@@ -69,11 +77,11 @@ impl<S: Storable> Cache<S> {
                 data
             }
         };
-        data
+        Ok(data)
     }
 
-    pub async fn invalidate(&self, key: String) {
-        self.storage.del(&key).await;
+    pub async fn invalidate(&self, key: String) -> Result<()> {
+        self.storage.del(&key).await
     }
 }
 
@@ -88,12 +96,14 @@ mod tests {
 
         let data = cache
             .cache("foo".to_string(), || async { "test".to_string() })
-            .await;
+            .await
+            .unwrap();
         assert_eq!(data, "test".to_string());
 
         let data = cache
             .cache("foo".to_string(), || async { "test2".to_string() })
-            .await;
+            .await
+            .unwrap();
         assert_eq!(data, "test".to_string());
     }
 
@@ -107,14 +117,16 @@ mod tests {
 
         let data = cache
             .cache("foo".to_string(), || async { "test".to_string() })
-            .await;
+            .await
+            .unwrap();
         assert_eq!(data, "test".to_string());
 
-        cache.invalidate("foo".to_string()).await;
+        cache.invalidate("foo".to_string()).await.unwrap();
 
         let data = cache
             .cache("foo".to_string(), || async { "test2".to_string() })
-            .await;
+            .await
+            .unwrap();
         assert_eq!(data, "test2".to_string());
     }
 
@@ -138,6 +150,7 @@ mod tests {
                     "test".to_string()
                 })
                 .await
+                .unwrap()
         });
 
         let data2 = tokio::spawn(async move {
@@ -147,6 +160,7 @@ mod tests {
                     "test2".to_string()
                 })
                 .await
+                .unwrap()
         });
 
         let data1 = data1.await.unwrap();
