@@ -1,4 +1,5 @@
 mod memory;
+mod redis;
 use async_trait::async_trait;
 use futures::channel::oneshot;
 use std::collections::HashMap;
