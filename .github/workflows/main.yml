@@ -1,6 +1,10 @@
-name: AnyCache 
+name: AnyCache Rust 
 
-on: [push]
+on:
+  push:
+    branches:
+      - main
+  pull_request:
 
 jobs:
   lint:
@@ -28,8 +32,7 @@ jobs:
           rust-version: stable
       - name: Build | Compile
         run: cargo check
-  build:
-    test:
+  test:
     name: Test
     strategy:
       matrix:
