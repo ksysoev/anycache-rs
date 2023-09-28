@@ -46,11 +46,16 @@ mod tests {
 
     #[tokio::test]
     async fn get_set_values() {
-        let redis_url = env::var("REDIS_URL").unwrap();
+        let mut redis_url = env::var("REDIS_URL").unwrap();
+        if redis_url == "" {
+            redis_url = "redis://127.0.0.1:6379".to_string();
+        }
 
         let redis = Client::open(redis_url).unwrap();
 
         let storage = RedisStorage::new(redis);
+        let _: () = storage.del("get_set_values").await;
+
         assert_eq!(storage.get("get_set_values").await, None);
 
         storage.set("get_set_values", "test").await;
@@ -61,12 +66,15 @@ mod tests {
         );
 
         // Cleanup
-        storage.del("del_values").await;
+        let _: () = storage.del("get_set_values").await;
     }
 
     #[tokio::test]
     async fn del_values() {
-        let redis_url = env::var("REDIS_URL").unwrap();
+        let mut redis_url = env::var("REDIS_URL").unwrap();
+        if redis_url == "" {
+            redis_url = "redis://127.0.0.1:6379".to_string();
+        }
 
         let redis = Client::open(redis_url).unwrap();
 
