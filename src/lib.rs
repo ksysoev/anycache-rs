@@ -1,6 +1,10 @@
 mod memory;
 use async_trait::async_trait;
+use futures::channel::oneshot;
+use std::collections::HashMap;
 use std::future::Future;
+use std::sync::Arc;
+use tokio::sync::Mutex;
 
 #[async_trait]
 pub trait Storable {
@@ -11,27 +15,60 @@ pub trait Storable {
 
 pub struct Cache<S: Storable> {
     storage: S,
+    queue: Arc<Mutex<HashMap<String, Vec<oneshot::Sender<String>>>>>,
 }
 
 impl<S: Storable> Cache<S> {
     pub fn new<T>(storage: S) -> Self {
-        Self { storage }
+        Self {
+            storage: storage,
+            queue: Arc::new(Mutex::new(HashMap::new())),
+        }
     }
 
-    pub async fn cache<F, Fut>(&self, key: String, get_data: F) -> String
+    pub async fn cache<C, F>(&self, key: String, get_data: C) -> String
     where
-        F: Fn() -> Fut,
-        Fut: Future<Output = String>,
+        F: Future<Output = String>,
+        C: Fn() -> F,
     {
-        let data = self.storage.get(&key).await;
-        match data {
-            Some(data) => data,
+        let queue = self.queue.clone();
+        let mut guard = queue.lock().await;
+        let data = match guard.get_mut(&key) {
+            Some(data) => {
+                let (sender, receiver) = oneshot::channel::<String>();
+                data.push(sender);
+                drop(guard);
+
+                receiver.await.unwrap()
+            }
             None => {
-                let data = get_data().await;
-                self.storage.set(&key, &data).await;
+                guard.insert(key.clone(), vec![]);
+                drop(guard);
+
+                let data = match self.storage.get(&key).await {
+                    Some(data) => data,
+                    None => {
+                        let data = get_data().await;
+                        self.storage.set(&key, &data).await;
+                        data
+                    }
+                };
+
+                let mut guard = queue.lock().await;
+                let senders = match guard.remove(&key) {
+                    Some(data) => data,
+                    None => vec![],
+                };
+                drop(guard);
+
+                for sender in senders {
+                    sender.send(data.clone()).unwrap();
+                }
+
                 data
             }
-        }
+        };
+        data
     }
 
     pub async fn invalidate(&self, key: String) {
