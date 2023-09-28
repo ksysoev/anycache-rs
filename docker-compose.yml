@@ -1,0 +1,16 @@
+version: '3'
+
+services:
+  tests:
+    build: .
+    volumes:
+      - .:/usr/src/app
+    environment:
+      - TEST_REDIS_HOST=redis
+      - TEST_REDIS_PORT=6379
+    depends_on:
+      - redis
+  redis:
+    image: redis:latest
+    ports:
+      - '6379:6379'
