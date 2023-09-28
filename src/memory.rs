@@ -9,6 +9,8 @@ pub struct InMemoryStorage {
 }
 
 impl InMemoryStorage {
+    // TODO: For some reason here compiler complains about unused code... not sure why
+    #[allow(dead_code)]
     pub fn new(capacity: u64) -> Self {
         Self {
             cache: MokaCache::new(capacity),
