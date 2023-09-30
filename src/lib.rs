@@ -22,7 +22,7 @@ pub enum CacheOptions {
 }
 
 #[derive(Debug)]
-pub enum StorageError {
+pub enum CacheError {
     ConnectionError,
     GeneratorError,
 }
@@ -33,7 +33,7 @@ pub enum StorableTTL {
     NoTTL,
 }
 
-pub type Result<T> = std::result::Result<T, StorageError>;
+pub type Result<T> = std::result::Result<T, CacheError>;
 
 #[async_trait]
 pub trait Storable {
@@ -76,7 +76,7 @@ impl<S: Storable> Cache<S> {
         opts: &[CacheOptions],
     ) -> Result<String>
     where
-        F: Future<Output = String>,
+        F: Future<Output = Result<String>>,
         C: Fn() -> F,
     {
         let mut ttl = None;
@@ -104,7 +104,7 @@ impl<S: Storable> Cache<S> {
                 let data = match self.storage.get(&key).await? {
                     Some(data) => data,
                     None => {
-                        let data = get_data().await;
+                        let data = get_data().await?;
                         self.storage.set(&key, &data, ttl).await?;
                         data
                     }

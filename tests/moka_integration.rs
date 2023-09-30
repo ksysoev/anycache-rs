@@ -8,7 +8,7 @@ async fn cache_moka() {
     let data = cache
         .cache(
             "cache_moka".to_string(),
-            || async { "test".to_string() },
+            || async { Ok("test".to_string()) },
             &[],
         )
         .await
@@ -18,7 +18,7 @@ async fn cache_moka() {
     let data = cache
         .cache(
             "cache_moka".to_string(),
-            || async { "test2".to_string() },
+            || async { Ok("test2".to_string()) },
             &[],
         )
         .await
@@ -37,7 +37,7 @@ async fn invalidate_moka() {
     let data = cache
         .cache(
             "invalidate_moka".to_string(),
-            || async { "test".to_string() },
+            || async { Ok("test".to_string()) },
             &[],
         )
         .await
@@ -52,7 +52,7 @@ async fn invalidate_moka() {
     let data = cache
         .cache(
             "invalidate_moka".to_string(),
-            || async { "test2".to_string() },
+            || async { Ok("test2".to_string()) },
             &[],
         )
         .await
@@ -79,7 +79,7 @@ async fn concurrent_moka() {
                 "concurrent_moka".to_string(),
                 || async {
                     tokio::time::sleep(std::time::Duration::from_millis(1)).await;
-                    "test".to_string()
+                    Ok("test".to_string())
                 },
                 &[],
             )
@@ -93,7 +93,7 @@ async fn concurrent_moka() {
                 "concurrent_moka".to_string(),
                 || async {
                     tokio::time::sleep(std::time::Duration::from_millis(1)).await;
-                    "test2".to_string()
+                    Ok("test2".to_string())
                 },
                 &[],
             )
@@ -119,7 +119,7 @@ async fn cache_with_ttl_moka() {
     let data = cache
         .cache(
             "cache_with_ttl_moka".to_string(),
-            || async { "test".to_string() },
+            || async { Ok("test".to_string()) },
             &[CacheOptions::TTL(std::time::Duration::from_millis(1))],
         )
         .await
@@ -129,7 +129,7 @@ async fn cache_with_ttl_moka() {
     let data = cache
         .cache(
             "cache_with_ttl_moka".to_string(),
-            || async { "test2".to_string() },
+            || async { Ok("test2".to_string()) },
             &[CacheOptions::TTL(std::time::Duration::from_millis(1))],
         )
         .await
@@ -141,7 +141,7 @@ async fn cache_with_ttl_moka() {
     let data = cache
         .cache(
             "cache_with_ttl_moka".to_string(),
-            || async { "test3".to_string() },
+            || async { Ok("test3".to_string()) },
             &[CacheOptions::TTL(std::time::Duration::from_millis(1))],
         )
         .await
