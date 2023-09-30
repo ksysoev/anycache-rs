@@ -30,11 +30,19 @@ impl Storable for RedisStorage {
             .map_err(|_| StorageError::ConnectionError)
     }
 
-    async fn set(&self, key: &str, value: &str, _: Option<Duration>) -> Result<()> {
+    async fn set(&self, key: &str, value: &str, ttl: Option<Duration>) -> Result<()> {
         let mut conn = self.get_conn().await;
-        conn.set(key, value)
-            .await
-            .map_err(|_| StorageError::ConnectionError)
+
+        match ttl {
+            Some(ttl) => conn
+                .pset_ex(key, value, ttl.as_millis() as usize)
+                .await
+                .map_err(|_| StorageError::ConnectionError),
+            None => conn
+                .set(key, value)
+                .await
+                .map_err(|_| StorageError::ConnectionError),
+        }
     }
 
     async fn del(&self, key: &str) -> Result<()> {
