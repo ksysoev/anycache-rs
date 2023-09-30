@@ -76,8 +76,12 @@ async fn get_with_ttl() {
         .await
         .unwrap();
 
-    assert_eq!(
-        storage.get_with_ttl("get_with_ttl").await.unwrap(),
-        Some(("test".to_string(), StorableTTL::NoTTL))
-    );
+    match storage.get_with_ttl("get_with_ttl").await.unwrap() {
+        Some((value, StorableTTL::TTL(ttl))) => {
+            assert_eq!(value, "test".to_string());
+            assert!(ttl.as_millis() <= 10);
+            assert!(ttl.as_millis() > 0);
+        }
+        _ => panic!("Expected TTL"),
+    }
 }

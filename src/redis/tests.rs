@@ -97,9 +97,7 @@ async fn get_with_ttl() {
         .await
         .unwrap();
 
-    let result = storage.get_with_ttl("get_with_ttl").await.unwrap();
-
-    match result {
+    match storage.get_with_ttl("get_with_ttl").await.unwrap() {
         Some((value, StorableTTL::TTL(ttl))) => {
             assert_eq!(value, "test".to_string());
             assert!(ttl.as_millis() <= 10);
