@@ -60,7 +60,7 @@ impl<S: Storable> Cache<S> {
         C: Fn() -> F,
     {
         let mut ttl = None;
-        for opt in opts.into_iter() {
+        for opt in opts.iter() {
             match opt {
                 CacheOptions::TTL(t) => ttl = Some(*t),
                 CacheOptions::WarmUpTTL(_) => {}
