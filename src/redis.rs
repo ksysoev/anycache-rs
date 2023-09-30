@@ -98,4 +98,32 @@ mod tests {
 
         assert_eq!(storage.get("del_values").await.unwrap(), None);
     }
+
+    #[tokio::test]
+    async fn set_with_ttl() {
+        let redis_url = env::var("REDIS_URL").unwrap_or("redis://localhost:6379".to_string());
+        let redis = Client::open(redis_url).unwrap();
+
+        let storage = RedisStorage::new(redis);
+
+        storage.del("set_with_ttl").await.unwrap();
+
+        storage
+            .set(
+                "set_with_ttl",
+                "test",
+                Some(std::time::Duration::from_millis(1)),
+            )
+            .await
+            .unwrap();
+
+        assert_eq!(
+            storage.get("set_with_ttl").await.unwrap(),
+            Some("test".to_string())
+        );
+
+        tokio::time::sleep(std::time::Duration::from_millis(2)).await;
+
+        assert_eq!(storage.get("set_with_ttl").await.unwrap(), None);
+    }
 }
