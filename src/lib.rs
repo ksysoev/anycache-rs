@@ -5,7 +5,14 @@ use futures::channel::oneshot;
 use std::collections::HashMap;
 use std::future::Future;
 use std::sync::Arc;
+use std::time::Duration;
 use tokio::sync::Mutex;
+
+#[derive(Debug)]
+pub enum Options {
+    TTL(Duration),
+    WarmUpTTL(Duration),
+}
 
 #[derive(Debug)]
 pub enum StorageError {
@@ -18,7 +25,7 @@ pub type Result<T> = std::result::Result<T, StorageError>;
 #[async_trait]
 pub trait Storable {
     async fn get(&self, key: &str) -> Result<Option<String>>;
-    async fn set(&self, key: &str, value: &str) -> Result<()>;
+    async fn set(&self, key: &str, value: &str, ttl: Option<Duration>) -> Result<()>;
     async fn del(&self, key: &str) -> Result<()>;
 }
 
@@ -58,7 +65,7 @@ impl<S: Storable> Cache<S> {
                     Some(data) => data,
                     None => {
                         let data = get_data().await;
-                        self.storage.set(&key, &data).await?;
+                        self.storage.set(&key, &data, None).await?;
                         data
                     }
                 };

@@ -1,3 +1,5 @@
+use std::time::Duration;
+
 use async_trait::async_trait;
 use redis::{aio::Connection, AsyncCommands, Client};
 
@@ -28,7 +30,7 @@ impl Storable for RedisStorage {
             .map_err(|_| StorageError::ConnectionError)
     }
 
-    async fn set(&self, key: &str, value: &str) -> Result<()> {
+    async fn set(&self, key: &str, value: &str, _: Option<Duration>) -> Result<()> {
         let mut conn = self.get_conn().await;
         conn.set(key, value)
             .await
@@ -59,7 +61,7 @@ mod tests {
 
         assert_eq!(storage.get("get_set_values").await.unwrap(), None);
 
-        storage.set("get_set_values", "test").await.unwrap();
+        storage.set("get_set_values", "test", None).await.unwrap();
 
         assert_eq!(
             storage.get("get_set_values").await.unwrap(),
@@ -77,7 +79,7 @@ mod tests {
 
         let storage = RedisStorage::new(redis);
 
-        storage.set("del_values", "test").await.unwrap();
+        storage.set("del_values", "test", None).await.unwrap();
 
         assert_eq!(
             storage.get("del_values").await.unwrap(),
