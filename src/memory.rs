@@ -28,7 +28,7 @@ impl InMemoryStorage {
     #[allow(dead_code)]
     pub fn new(capacity: u64) -> Self {
         let expiry = MokaExpiry;
-        let cache = MokaCache::<String, (Option<Duration>, String)>::builder()
+        let cache = MokaCache::builder()
             .max_capacity(capacity)
             .expire_after(expiry)
             .build();
