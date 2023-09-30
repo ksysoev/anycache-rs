@@ -67,7 +67,7 @@ impl Storable for MokaStorage {
 
 #[cfg(test)]
 mod tests {
-    use crate::Storable;
+    use crate::{Storable, StorableTTL};
 
     #[tokio::test]
     async fn get_set_values() {
@@ -118,5 +118,36 @@ mod tests {
         tokio::time::sleep(std::time::Duration::from_millis(2)).await;
 
         assert_eq!(storage.get("set_with_ttl").await.unwrap(), None);
+    }
+
+    #[tokio::test]
+    async fn get_with_ttl() {
+        use super::MokaStorage;
+        let storage = MokaStorage::new(10);
+
+        storage.del("get_with_ttl").await.unwrap();
+
+        assert_eq!(storage.get_with_ttl("get_with_ttl").await.unwrap(), None);
+
+        storage.set("get_with_ttl", "test", None).await.unwrap();
+
+        assert_eq!(
+            storage.get_with_ttl("get_with_ttl").await.unwrap(),
+            Some(("test".to_string(), StorableTTL::NoTTL))
+        );
+
+        storage
+            .set(
+                "get_with_ttl",
+                "test",
+                Some(std::time::Duration::from_millis(10)),
+            )
+            .await
+            .unwrap();
+
+        assert_eq!(
+            storage.get_with_ttl("get_with_ttl").await.unwrap(),
+            Some(("test".to_string(), StorableTTL::NoTTL))
+        );
     }
 }

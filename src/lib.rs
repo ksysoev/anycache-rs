@@ -20,6 +20,7 @@ pub enum StorageError {
     GeneratorError,
 }
 
+#[derive(Debug, PartialEq)]
 pub enum StorableTTL {
     TTL(Duration),
     NoTTL,
