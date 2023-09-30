@@ -9,7 +9,7 @@ use std::time::Duration;
 use tokio::sync::Mutex;
 
 #[derive(Debug)]
-pub enum Options {
+pub enum CacheOptions {
     TTL(Duration),
     WarmUpTTL(Duration),
 }
@@ -42,11 +42,24 @@ impl<S: Storable> Cache<S> {
         }
     }
 
-    pub async fn cache<C, F>(&self, key: String, get_data: C) -> Result<String>
+    pub async fn cache<C, F>(
+        &self,
+        key: String,
+        get_data: C,
+        opts: &[CacheOptions],
+    ) -> Result<String>
     where
         F: Future<Output = String>,
         C: Fn() -> F,
     {
+        let mut ttl = None;
+        for opt in opts.into_iter() {
+            match opt {
+                CacheOptions::TTL(t) => ttl = Some(*t),
+                CacheOptions::WarmUpTTL(_) => {}
+            }
+        }
+
         let queue = self.queue.clone();
         let mut guard = queue.lock().await;
         let data = match guard.get_mut(&key) {
@@ -65,7 +78,7 @@ impl<S: Storable> Cache<S> {
                     Some(data) => data,
                     None => {
                         let data = get_data().await;
-                        self.storage.set(&key, &data, None).await?;
+                        self.storage.set(&key, &data, ttl).await?;
                         data
                     }
                 };
@@ -102,13 +115,21 @@ mod tests {
         let storage = MokaStorage::new(10);
         let cache = Cache::new::<MokaStorage>(storage);
         let data = cache
-            .cache("cache_moka".to_string(), || async { "test".to_string() })
+            .cache(
+                "cache_moka".to_string(),
+                || async { "test".to_string() },
+                &[],
+            )
             .await
             .unwrap();
         assert_eq!(data, "test".to_string());
 
         let data = cache
-            .cache("cache_moka".to_string(), || async { "test2".to_string() })
+            .cache(
+                "cache_moka".to_string(),
+                || async { "test2".to_string() },
+                &[],
+            )
             .await
             .unwrap();
         assert_eq!(data, "test".to_string());
@@ -128,13 +149,21 @@ mod tests {
         cache.invalidate("cache_redis".to_string()).await.unwrap();
 
         let data = cache
-            .cache("cache_redis".to_string(), || async { "test".to_string() })
+            .cache(
+                "cache_redis".to_string(),
+                || async { "test".to_string() },
+                &[],
+            )
             .await
             .unwrap();
         assert_eq!(data, "test".to_string());
 
         let data = cache
-            .cache("cache_redis".to_string(), || async { "test2".to_string() })
+            .cache(
+                "cache_redis".to_string(),
+                || async { "test2".to_string() },
+                &[],
+            )
             .await
             .unwrap();
         assert_eq!(data, "test".to_string());
@@ -151,9 +180,11 @@ mod tests {
         let cache = Cache::new::<MokaStorage>(storage);
 
         let data = cache
-            .cache("invalidate_moka".to_string(), || async {
-                "test".to_string()
-            })
+            .cache(
+                "invalidate_moka".to_string(),
+                || async { "test".to_string() },
+                &[],
+            )
             .await
             .unwrap();
         assert_eq!(data, "test".to_string());
@@ -164,9 +195,11 @@ mod tests {
             .unwrap();
 
         let data = cache
-            .cache("invalidate_moka".to_string(), || async {
-                "test2".to_string()
-            })
+            .cache(
+                "invalidate_moka".to_string(),
+                || async { "test2".to_string() },
+                &[],
+            )
             .await
             .unwrap();
         assert_eq!(data, "test2".to_string());
@@ -189,9 +222,11 @@ mod tests {
             .unwrap();
 
         let data = cache
-            .cache("invalidate_redis".to_string(), || async {
-                "test".to_string()
-            })
+            .cache(
+                "invalidate_redis".to_string(),
+                || async { "test".to_string() },
+                &[],
+            )
             .await
             .unwrap();
         assert_eq!(data, "test".to_string());
@@ -202,9 +237,11 @@ mod tests {
             .unwrap();
 
         let data = cache
-            .cache("invalidate_redis".to_string(), || async {
-                "test2".to_string()
-            })
+            .cache(
+                "invalidate_redis".to_string(),
+                || async { "test2".to_string() },
+                &[],
+            )
             .await
             .unwrap();
         assert_eq!(data, "test2".to_string());
@@ -230,20 +267,28 @@ mod tests {
 
         let data1 = tokio::spawn(async move {
             cache1
-                .cache("concurrent_moka".to_string(), || async {
-                    tokio::time::sleep(std::time::Duration::from_millis(1)).await;
-                    "test".to_string()
-                })
+                .cache(
+                    "concurrent_moka".to_string(),
+                    || async {
+                        tokio::time::sleep(std::time::Duration::from_millis(1)).await;
+                        "test".to_string()
+                    },
+                    &[],
+                )
                 .await
                 .unwrap()
         });
 
         let data2 = tokio::spawn(async move {
             cache2
-                .cache("concurrent_moka".to_string(), || async {
-                    tokio::time::sleep(std::time::Duration::from_millis(1)).await;
-                    "test2".to_string()
-                })
+                .cache(
+                    "concurrent_moka".to_string(),
+                    || async {
+                        tokio::time::sleep(std::time::Duration::from_millis(1)).await;
+                        "test2".to_string()
+                    },
+                    &[],
+                )
                 .await
                 .unwrap()
         });
@@ -276,20 +321,28 @@ mod tests {
 
         let data1 = tokio::spawn(async move {
             cache1
-                .cache("concurrent_redis".to_string(), || async {
-                    tokio::time::sleep(std::time::Duration::from_millis(1)).await;
-                    "test".to_string()
-                })
+                .cache(
+                    "concurrent_redis".to_string(),
+                    || async {
+                        tokio::time::sleep(std::time::Duration::from_millis(1)).await;
+                        "test".to_string()
+                    },
+                    &[],
+                )
                 .await
                 .unwrap()
         });
 
         let data2 = tokio::spawn(async move {
             cache2
-                .cache("concurrent_redis".to_string(), || async {
-                    tokio::time::sleep(std::time::Duration::from_millis(1)).await;
-                    "test2".to_string()
-                })
+                .cache(
+                    "concurrent_redis".to_string(),
+                    || async {
+                        tokio::time::sleep(std::time::Duration::from_millis(1)).await;
+                        "test2".to_string()
+                    },
+                    &[],
+                )
                 .await
                 .unwrap()
         });
@@ -303,5 +356,92 @@ mod tests {
             .invalidate("concurrent_redis".to_string())
             .await
             .unwrap();
+    }
+
+    #[tokio::test]
+    async fn cache_with_ttl_moka() {
+        use super::moka::MokaStorage;
+        use super::Cache;
+        use super::CacheOptions;
+
+        let storage = MokaStorage::new(10);
+        let cache = Cache::new::<MokaStorage>(storage);
+
+        let data = cache
+            .cache(
+                "cache_with_ttl_moka".to_string(),
+                || async { "test".to_string() },
+                &[CacheOptions::TTL(std::time::Duration::from_millis(1))],
+            )
+            .await
+            .unwrap();
+        assert_eq!(data, "test".to_string());
+
+        let data = cache
+            .cache(
+                "cache_with_ttl_moka".to_string(),
+                || async { "test2".to_string() },
+                &[CacheOptions::TTL(std::time::Duration::from_millis(1))],
+            )
+            .await
+            .unwrap();
+        assert_eq!(data, "test".to_string());
+
+        tokio::time::sleep(std::time::Duration::from_millis(2)).await;
+
+        let data = cache
+            .cache(
+                "cache_with_ttl_moka".to_string(),
+                || async { "test3".to_string() },
+                &[CacheOptions::TTL(std::time::Duration::from_millis(1))],
+            )
+            .await
+            .unwrap();
+        assert_eq!(data, "test3".to_string());
+    }
+
+    #[tokio::test]
+    async fn cache_with_ttl_redis() {
+        use super::redis::RedisStorage;
+        use super::Cache;
+        use super::CacheOptions;
+        use redis::Client;
+        use std::env;
+
+        let redis_url = env::var("REDIS_URL").unwrap_or("redis://localhost:6379".to_string());
+        let storage = RedisStorage::new(Client::open(redis_url).unwrap());
+        let cache = Cache::new::<RedisStorage>(storage);
+
+        let data = cache
+            .cache(
+                "cache_with_ttl_moka".to_string(),
+                || async { "test".to_string() },
+                &[CacheOptions::TTL(std::time::Duration::from_millis(10))],
+            )
+            .await
+            .unwrap();
+        assert_eq!(data, "test".to_string());
+
+        let data = cache
+            .cache(
+                "cache_with_ttl_moka".to_string(),
+                || async { "test2".to_string() },
+                &[CacheOptions::TTL(std::time::Duration::from_millis(10))],
+            )
+            .await
+            .unwrap();
+        assert_eq!(data, "test".to_string());
+
+        tokio::time::sleep(std::time::Duration::from_millis(11)).await;
+
+        let data = cache
+            .cache(
+                "cache_with_ttl_moka".to_string(),
+                || async { "test3".to_string() },
+                &[CacheOptions::TTL(std::time::Duration::from_millis(10))],
+            )
+            .await
+            .unwrap();
+        assert_eq!(data, "test3".to_string());
     }
 }
