@@ -3,7 +3,7 @@ use moka::future::Cache as MokaCache;
 use moka::Expiry;
 use std::time::{Duration, Instant};
 
-use crate::{Result, Storable};
+use crate::{Result, Storable, StorableTTL};
 
 #[derive(Debug)]
 pub struct MokaStorage {
@@ -55,6 +55,13 @@ impl Storable for MokaStorage {
     async fn del(&self, key: &str) -> Result<()> {
         self.cache.remove(key).await;
         Ok(())
+    }
+
+    async fn get_with_ttl(&self, key: &str) -> Result<Option<(String, StorableTTL)>> {
+        if let Some((_, val)) = self.cache.get(key).await {
+            return Ok(Some((val.to_string(), StorableTTL::NoTTL)));
+        }
+        Ok(None)
     }
 }
 

@@ -3,7 +3,7 @@ use std::time::Duration;
 use async_trait::async_trait;
 use redis::{aio::Connection, AsyncCommands, Client};
 
-use crate::{Result, Storable, StorageError};
+use crate::{Result, Storable, StorableTTL, StorageError};
 
 pub struct RedisStorage {
     redis: Client,
@@ -50,6 +50,41 @@ impl Storable for RedisStorage {
         conn.del(key)
             .await
             .map_err(|_| StorageError::ConnectionError)
+    }
+
+    async fn get_with_ttl(&self, key: &str) -> Result<Option<(String, StorableTTL)>> {
+        let mut conn = self.get_conn().await;
+
+        let result: Option<String> = conn
+            .get(key)
+            .await
+            .map_err(|_| StorageError::ConnectionError)?;
+
+        match result {
+            None => Ok(None),
+            Some(val) => {
+                let ttl: isize = conn
+                    .pttl(key)
+                    .await
+                    .map_err(|_| StorageError::ConnectionError)?;
+
+                match ttl {
+                    -1 => return Ok(Some((val, StorableTTL::NoTTL))),
+                    -2 => {
+                        return Ok(Some((
+                            val,
+                            StorableTTL::TTL(Duration::from_millis(ttl as u64)),
+                        )))
+                    }
+                    _ => {
+                        return Ok(Some((
+                            val,
+                            StorableTTL::TTL(Duration::from_millis(ttl as u64)),
+                        )))
+                    }
+                }
+            }
+        }
     }
 }
 

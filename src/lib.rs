@@ -20,6 +20,11 @@ pub enum StorageError {
     GeneratorError,
 }
 
+pub enum StorableTTL {
+    TTL(Duration),
+    NoTTL,
+}
+
 pub type Result<T> = std::result::Result<T, StorageError>;
 
 #[async_trait]
@@ -27,6 +32,7 @@ pub trait Storable {
     async fn get(&self, key: &str) -> Result<Option<String>>;
     async fn set(&self, key: &str, value: &str, ttl: Option<Duration>) -> Result<()>;
     async fn del(&self, key: &str) -> Result<()>;
+    async fn get_with_ttl(&self, key: &str) -> Result<Option<(String, StorableTTL)>>;
 }
 
 pub struct Cache<S: Storable> {
