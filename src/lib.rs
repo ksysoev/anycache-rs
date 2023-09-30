@@ -21,7 +21,7 @@ pub enum CacheOptions {
     WarmUpTTL(Duration),
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum CacheError {
     ConnectionError,
     GeneratorError,
@@ -52,7 +52,7 @@ pub trait Storable {
 
 pub struct Cache<S: Storable> {
     storage: S,
-    queue: Arc<Mutex<HashMap<String, Vec<oneshot::Sender<String>>>>>,
+    queue: Arc<Mutex<HashMap<String, Vec<oneshot::Sender<Result<String>>>>>>,
 }
 
 impl<S: Storable> Cache<S> {
@@ -89,9 +89,9 @@ impl<S: Storable> Cache<S> {
 
         let queue = self.queue.clone();
         let mut guard = queue.lock().await;
-        let data = match guard.get_mut(&key) {
+        match guard.get_mut(&key) {
             Some(data) => {
-                let (sender, receiver) = oneshot::channel::<String>();
+                let (sender, receiver) = oneshot::channel::<Result<String>>();
                 data.push(sender);
                 drop(guard);
 
@@ -101,13 +101,15 @@ impl<S: Storable> Cache<S> {
                 guard.insert(key.clone(), vec![]);
                 drop(guard);
 
-                let data = match self.storage.get(&key).await? {
-                    Some(data) => data,
-                    None => {
-                        let data = get_data().await?;
-                        self.storage.set(&key, &data, ttl).await?;
-                        data
-                    }
+                let result = match self.storage.get(&key).await? {
+                    Some(data) => Ok(data),
+                    None => match get_data().await {
+                        Ok(data) => match self.storage.set(&key, &data, ttl).await {
+                            Ok(_) => Ok(data),
+                            Err(e) => Err(e),
+                        },
+                        Err(e) => Err(e),
+                    },
                 };
 
                 let mut guard = queue.lock().await;
@@ -118,13 +120,12 @@ impl<S: Storable> Cache<S> {
                 drop(guard);
 
                 for sender in senders {
-                    sender.send(data.clone()).unwrap();
+                    sender.send(result.clone()).unwrap();
                 }
 
-                data
+                result
             }
-        };
-        Ok(data)
+        }
     }
 
     /// Invalidate the data associated with the given key.
