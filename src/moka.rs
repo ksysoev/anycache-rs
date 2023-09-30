@@ -5,6 +5,7 @@ use std::time::{Duration, Instant};
 
 use crate::{Result, Storable, StorableTTL};
 
+/// A struct representing a storage using the Moka cache.
 #[derive(Debug)]
 pub struct MokaStorage {
     cache: MokaCache<String, (Option<Duration>, String)>,
@@ -24,8 +25,7 @@ impl Expiry<String, (Option<Duration>, String)> for MokaExpiry {
 }
 
 impl MokaStorage {
-    // TODO: For some reason here compiler complains about unused code... not sure why
-    #[allow(dead_code)]
+    /// Creates a new `MokaStorage` instance with the specified capacity.
     pub fn new(capacity: u64) -> Self {
         let expiry = MokaExpiry;
         let cache = MokaCache::builder()
@@ -38,6 +38,7 @@ impl MokaStorage {
 
 #[async_trait]
 impl Storable for MokaStorage {
+    /// Retrieves the value associated with the specified key from the cache.
     async fn get(&self, key: &str) -> Result<Option<String>> {
         if let Some((_, val)) = self.cache.get(key).await {
             return Ok(Some(val.to_string()));
@@ -45,6 +46,7 @@ impl Storable for MokaStorage {
         Ok(None)
     }
 
+    /// Inserts a key-value pair into the cache with an optional time-to-live (TTL).
     async fn set(&self, key: &str, value: &str, ttl: Option<Duration>) -> Result<()> {
         self.cache
             .insert(key.to_string(), (ttl, value.to_string()))
@@ -52,11 +54,13 @@ impl Storable for MokaStorage {
         Ok(())
     }
 
+    /// Removes the key-value pair associated with the specified key from the cache.
     async fn del(&self, key: &str) -> Result<()> {
         self.cache.remove(key).await;
         Ok(())
     }
 
+    /// Retrieves the value associated with the specified key from the cache along with its TTL.
     async fn get_with_ttl(&self, key: &str) -> Result<Option<(String, StorableTTL)>> {
         if let Some((_, val)) = self.cache.get(key).await {
             return Ok(Some((val.to_string(), StorableTTL::NoTTL)));

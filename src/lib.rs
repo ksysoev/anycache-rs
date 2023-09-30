@@ -1,3 +1,10 @@
+/// This module defines a cache implementation that can use different storage backends.
+/// It provides a trait `Storable` that defines the interface for interacting with the storage backend.
+/// The `Cache` struct is the main entry point for using the cache and it takes a `Storable` implementation as a parameter.
+/// The `Cache` struct provides a `cache` method that can be used to cache data and a `invalidate` method that can be used to invalidate cached data.
+/// The `CacheOptions` enum defines the options that can be passed to the `cache` method.
+/// The `StorageError` enum defines the errors that can occur when interacting with the storage backend.
+/// The `StorableTTL` enum defines the TTL (time to live) options that can be used when storing data.
 pub mod moka;
 pub mod redis;
 use async_trait::async_trait;
@@ -30,9 +37,16 @@ pub type Result<T> = std::result::Result<T, StorageError>;
 
 #[async_trait]
 pub trait Storable {
+    /// Get the value associated with the given key.
     async fn get(&self, key: &str) -> Result<Option<String>>;
+
+    /// Set the value associated with the given key.
     async fn set(&self, key: &str, value: &str, ttl: Option<Duration>) -> Result<()>;
+
+    /// Delete the value associated with the given key.
     async fn del(&self, key: &str) -> Result<()>;
+
+    /// Get the value and TTL associated with the given key.
     async fn get_with_ttl(&self, key: &str) -> Result<Option<(String, StorableTTL)>>;
 }
 
@@ -42,6 +56,7 @@ pub struct Cache<S: Storable> {
 }
 
 impl<S: Storable> Cache<S> {
+    /// Create a new cache instance with the given storage backend.
     pub fn new<T>(storage: S) -> Self {
         Self {
             storage,
@@ -49,6 +64,11 @@ impl<S: Storable> Cache<S> {
         }
     }
 
+    /// Cache the data associated with the given key.
+    ///
+    /// If the data is already cached, return the cached data.
+    /// If the data is not cached, call the `get_data` closure to get the data and cache it.
+    /// The `opts` parameter can be used to specify cache options.
     pub async fn cache<C, F>(
         &self,
         key: String,
@@ -107,6 +127,7 @@ impl<S: Storable> Cache<S> {
         Ok(data)
     }
 
+    /// Invalidate the data associated with the given key.
     pub async fn invalidate(&self, key: String) -> Result<()> {
         self.storage.del(&key).await
     }

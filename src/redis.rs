@@ -1,21 +1,21 @@
-use std::time::Duration;
+use crate::{Result, Storable, StorableTTL, StorageError};
 
 use async_trait::async_trait;
 use redis::{aio::Connection, AsyncCommands, Client};
+use std::time::Duration;
 
-use crate::{Result, Storable, StorableTTL, StorageError};
-
+/// RedisStorage is a struct that implements the Storable trait for Redis storage.
 pub struct RedisStorage {
     redis: Client,
 }
 
 impl RedisStorage {
-    // TODO: For some reason here compiler complains about unused code... not sure why
-    #[allow(dead_code)]
+    /// Creates a new RedisStorage instance.
     pub fn new(redis: Client) -> Self {
         Self { redis }
     }
 
+    /// Gets an async Redis connection.
     async fn get_conn(&self) -> Connection {
         self.redis.get_async_connection().await.unwrap()
     }
@@ -23,6 +23,7 @@ impl RedisStorage {
 
 #[async_trait]
 impl Storable for RedisStorage {
+    /// Gets a value from Redis by key.
     async fn get(&self, key: &str) -> Result<Option<String>> {
         let mut conn = self.get_conn().await;
         conn.get(key)
@@ -30,6 +31,7 @@ impl Storable for RedisStorage {
             .map_err(|_| StorageError::ConnectionError)
     }
 
+    /// Sets a value in Redis by key.
     async fn set(&self, key: &str, value: &str, ttl: Option<Duration>) -> Result<()> {
         let mut conn = self.get_conn().await;
 
@@ -45,6 +47,7 @@ impl Storable for RedisStorage {
         }
     }
 
+    /// Deletes a value from Redis by key.
     async fn del(&self, key: &str) -> Result<()> {
         let mut conn = self.get_conn().await;
         conn.del(key)
@@ -52,6 +55,7 @@ impl Storable for RedisStorage {
             .map_err(|_| StorageError::ConnectionError)
     }
 
+    /// Gets a value and its time-to-live from Redis by key.
     async fn get_with_ttl(&self, key: &str) -> Result<Option<(String, StorableTTL)>> {
         let mut conn = self.get_conn().await;
 
