@@ -1,4 +1,4 @@
-mod memory;
+mod moka;
 mod redis;
 use async_trait::async_trait;
 use futures::channel::oneshot;
@@ -95,24 +95,20 @@ impl<S: Storable> Cache<S> {
 mod tests {
 
     #[tokio::test]
-    async fn cache_inmemory() {
-        use super::memory::InMemoryStorage;
+    async fn cache_moka() {
+        use super::moka::MokaStorage;
         use super::Cache;
 
-        let storage = InMemoryStorage::new(10);
-        let cache = Cache::new::<InMemoryStorage>(storage);
+        let storage = MokaStorage::new(10);
+        let cache = Cache::new::<MokaStorage>(storage);
         let data = cache
-            .cache("cache_inmemory".to_string(), || async {
-                "test".to_string()
-            })
+            .cache("cache_moka".to_string(), || async { "test".to_string() })
             .await
             .unwrap();
         assert_eq!(data, "test".to_string());
 
         let data = cache
-            .cache("cache_inmemory".to_string(), || async {
-                "test2".to_string()
-            })
+            .cache("cache_moka".to_string(), || async { "test2".to_string() })
             .await
             .unwrap();
         assert_eq!(data, "test".to_string());
@@ -147,15 +143,15 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn invalidate_inmemory() {
-        use super::memory::InMemoryStorage;
+    async fn invalidate_moka() {
+        use super::moka::MokaStorage;
         use super::Cache;
 
-        let storage = InMemoryStorage::new(10);
-        let cache = Cache::new::<InMemoryStorage>(storage);
+        let storage = MokaStorage::new(10);
+        let cache = Cache::new::<MokaStorage>(storage);
 
         let data = cache
-            .cache("invalidate_inmemory".to_string(), || async {
+            .cache("invalidate_moka".to_string(), || async {
                 "test".to_string()
             })
             .await
@@ -163,12 +159,12 @@ mod tests {
         assert_eq!(data, "test".to_string());
 
         cache
-            .invalidate("invalidate_inmemory".to_string())
+            .invalidate("invalidate_moka".to_string())
             .await
             .unwrap();
 
         let data = cache
-            .cache("invalidate_inmemory".to_string(), || async {
+            .cache("invalidate_moka".to_string(), || async {
                 "test2".to_string()
             })
             .await
@@ -220,21 +216,21 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn concurrent_inmemory() {
-        use super::memory::InMemoryStorage;
+    async fn concurrent_moka() {
+        use super::moka::MokaStorage;
         use super::Cache;
         use std::sync::Arc;
         // use tokio::sync::Mutex;
 
-        let storage = InMemoryStorage::new(10);
-        let cache = Arc::new(Cache::new::<InMemoryStorage>(storage));
+        let storage = MokaStorage::new(10);
+        let cache = Arc::new(Cache::new::<MokaStorage>(storage));
 
         let cache1 = cache.clone();
         let cache2 = cache.clone();
 
         let data1 = tokio::spawn(async move {
             cache1
-                .cache("concurrent_inmemory".to_string(), || async {
+                .cache("concurrent_moka".to_string(), || async {
                     tokio::time::sleep(std::time::Duration::from_millis(1)).await;
                     "test".to_string()
                 })
@@ -244,7 +240,7 @@ mod tests {
 
         let data2 = tokio::spawn(async move {
             cache2
-                .cache("concurrent_inmemory".to_string(), || async {
+                .cache("concurrent_moka".to_string(), || async {
                     tokio::time::sleep(std::time::Duration::from_millis(1)).await;
                     "test2".to_string()
                 })

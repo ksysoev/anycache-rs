@@ -6,7 +6,7 @@ use std::time::{Duration, Instant};
 use crate::{Result, Storable};
 
 #[derive(Debug)]
-pub struct InMemoryStorage {
+pub struct MokaStorage {
     cache: MokaCache<String, (Option<Duration>, String)>,
 }
 
@@ -23,7 +23,7 @@ impl Expiry<String, (Option<Duration>, String)> for MokaExpiry {
     }
 }
 
-impl InMemoryStorage {
+impl MokaStorage {
     // TODO: For some reason here compiler complains about unused code... not sure why
     #[allow(dead_code)]
     pub fn new(capacity: u64) -> Self {
@@ -37,7 +37,7 @@ impl InMemoryStorage {
 }
 
 #[async_trait]
-impl Storable for InMemoryStorage {
+impl Storable for MokaStorage {
     async fn get(&self, key: &str) -> Result<Option<String>> {
         if let Some((_, val)) = self.cache.get(key).await {
             return Ok(Some(val.to_string()));
@@ -64,8 +64,8 @@ mod tests {
 
     #[tokio::test]
     async fn get_set_values() {
-        use super::InMemoryStorage;
-        let storage = InMemoryStorage::new(10);
+        use super::MokaStorage;
+        let storage = MokaStorage::new(10);
         assert_eq!(storage.get("foo").await.unwrap(), None);
 
         storage.set("foo", "test", None).await.unwrap();
@@ -75,8 +75,8 @@ mod tests {
 
     #[tokio::test]
     async fn del_values() {
-        use super::InMemoryStorage;
-        let storage = InMemoryStorage::new(10);
+        use super::MokaStorage;
+        let storage = MokaStorage::new(10);
 
         storage.set("foo", "test", None).await.unwrap();
 
@@ -89,8 +89,8 @@ mod tests {
 
     #[tokio::test]
     async fn set_with_ttl() {
-        use super::InMemoryStorage;
-        let storage = InMemoryStorage::new(10);
+        use super::MokaStorage;
+        let storage = MokaStorage::new(10);
 
         storage.del("set_with_ttl").await.unwrap();
 

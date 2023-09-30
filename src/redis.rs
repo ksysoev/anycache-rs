@@ -112,7 +112,7 @@ mod tests {
             .set(
                 "set_with_ttl",
                 "test",
-                Some(std::time::Duration::from_millis(1)),
+                Some(std::time::Duration::from_millis(2)),
             )
             .await
             .unwrap();
@@ -122,7 +122,7 @@ mod tests {
             Some("test".to_string())
         );
 
-        tokio::time::sleep(std::time::Duration::from_millis(2)).await;
+        tokio::time::sleep(std::time::Duration::from_millis(3)).await;
 
         assert_eq!(storage.get("set_with_ttl").await.unwrap(), None);
     }
