@@ -7,9 +7,11 @@ services:
       - .:/usr/src/app
     environment:
       - REDIS_URL=redis://redis:6379
+      - MEMCACHED_URL=memcached://memcached:11211
     depends_on:
       - redis
+      - memcached
   redis:
     image: redis:latest
-    ports:
-      - '6379:6379'
+  memcached:
+    image: memcached:latest
