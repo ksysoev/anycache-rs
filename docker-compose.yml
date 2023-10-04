@@ -7,7 +7,7 @@ services:
       - .:/usr/src/app
     environment:
       - REDIS_URL=redis://redis:6379
-      - MEMCACHED_URL=memcached://memcached:11211
+      - MEMCACHED_URL=memcached:11211
     depends_on:
       - redis
       - memcached

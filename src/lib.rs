@@ -1,10 +1,4 @@
-/// This module defines a cache implementation that can use different storage backends.
-/// It provides a trait `Storable` that defines the interface for interacting with the storage backend.
-/// The `Cache` struct is the main entry point for using the cache and it takes a `Storable` implementation as a parameter.
-/// The `Cache` struct provides a `cache` method that can be used to cache data and a `invalidate` method that can be used to invalidate cached data.
-/// The `CacheOptions` enum defines the options that can be passed to the `cache` method.
-/// The `StorageError` enum defines the errors that can occur when interacting with the storage backend.
-/// The `StorableTTL` enum defines the TTL (time to live) options that can be used when storing data.
+pub mod memcache;
 pub mod moka;
 pub mod redis;
 
@@ -15,6 +9,14 @@ use std::future::Future;
 use std::sync::Arc;
 use std::time::Duration;
 use tokio::sync::Mutex;
+
+/// This module defines a cache implementation that can use different storage backends.
+/// It provides a trait `Storable` that defines the interface for interacting with the storage backend.
+/// The `Cache` struct is the main entry point for using the cache and it takes a `Storable` implementation as a parameter.
+/// The `Cache` struct provides a `cache` method that can be used to cache data and a `invalidate` method that can be used to invalidate cached data.
+/// The `CacheOptions` enum defines the options that can be passed to the `cache` method.
+/// The `StorageError` enum defines the errors that can occur when interacting with the storage backend.
+/// The `StorableTTL` enum defines the TTL (time to live) options that can be used when storing data.
 
 #[derive(Debug)]
 pub enum CacheOptions {
