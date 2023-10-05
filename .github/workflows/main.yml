@@ -54,5 +54,7 @@ jobs:
         uses: supercharge/redis-github-action@1.6.0
         with:
           redis-version: ${{ matrix.redis-version }}
+      - name: Start Memcached
+        uses: niden/actions-memcached@v7
       - name: Build | Compile
         run: cargo test
