@@ -70,9 +70,8 @@ async fn set_with_ttl() {
         Some("test".to_string())
     );
 
-    tokio::time::sleep(std::time::Duration::from_millis(3)).await;
-    // TODO: TTL Doesn't look to be working
-    // assert_eq!(storage.get("set_with_ttl").await.unwrap(), None);
+    tokio::time::sleep(std::time::Duration::from_secs(3)).await;
+    assert_eq!(storage.get("set_with_ttl").await.unwrap(), None);
 }
 
 #[tokio::test]
