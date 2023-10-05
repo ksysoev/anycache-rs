@@ -70,7 +70,7 @@ async fn set_with_ttl() {
         Some("test".to_string())
     );
 
-    tokio::time::sleep(std::time::Duration::from_secs(3)).await;
+    tokio::time::sleep(std::time::Duration::from_secs(2)).await;
     assert_eq!(storage.get("set_with_ttl").await.unwrap(), None);
 }
 
@@ -97,7 +97,7 @@ async fn get_with_ttl() {
         .set(
             "get_with_ttl",
             "test",
-            Some(std::time::Duration::from_millis(10)),
+            Some(std::time::Duration::from_secs(2)),
         )
         .await
         .unwrap();

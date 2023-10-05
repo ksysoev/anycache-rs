@@ -154,7 +154,7 @@ async fn cache_with_ttl_redis() {
 
     let data = cache
         .cache(
-            "cache_with_ttl_moka".to_string(),
+            "cache_with_ttl_redis".to_string(),
             || async { Ok("test".to_string()) },
             &[CacheOptions::TTL(std::time::Duration::from_millis(10))],
         )
@@ -164,7 +164,7 @@ async fn cache_with_ttl_redis() {
 
     let data = cache
         .cache(
-            "cache_with_ttl_moka".to_string(),
+            "cache_with_ttl_redis".to_string(),
             || async { Ok("test2".to_string()) },
             &[CacheOptions::TTL(std::time::Duration::from_millis(10))],
         )
@@ -176,7 +176,7 @@ async fn cache_with_ttl_redis() {
 
     let data = cache
         .cache(
-            "cache_with_ttl_moka".to_string(),
+            "cache_with_ttl_redis".to_string(),
             || async { Ok("test3".to_string()) },
             &[CacheOptions::TTL(std::time::Duration::from_millis(10))],
         )

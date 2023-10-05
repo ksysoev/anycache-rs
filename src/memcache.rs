@@ -11,7 +11,7 @@ use tokio::sync::Mutex;
 
 type MemcacheClient = Protocol<AllowStdIo<TcpStream>>;
 
-struct MemcacheStorage {
+pub struct MemcacheStorage {
     client: Arc<Mutex<MemcacheClient>>,
 }
 
