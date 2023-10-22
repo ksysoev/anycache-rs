@@ -148,3 +148,66 @@ async fn cache_with_ttl_moka() {
         .unwrap();
     assert_eq!(data, "test3".to_string());
 }
+
+#[tokio::test]
+async fn cache_json_moka() {
+    use anycache::moka::MokaStorage;
+    use anycache::Cache;
+    use serde::{Deserialize, Serialize};
+
+    let storage = MokaStorage::new(10);
+    let cache = Cache::new::<MokaStorage>(storage);
+
+    cache
+        .invalidate("cache_json_moka".to_string())
+        .await
+        .unwrap();
+
+    #[derive(Serialize, Deserialize, PartialEq, Debug)]
+    struct Test {
+        test: String,
+    }
+
+    let data: Test = cache
+        .cache_json(
+            "cache_json_moka".to_string(),
+            || async {
+                Ok(Test {
+                    test: "test".to_string(),
+                })
+            },
+            &[],
+        )
+        .await
+        .unwrap();
+    assert_eq!(
+        data,
+        Test {
+            test: "test".to_string(),
+        }
+    );
+
+    let data: Test = cache
+        .cache_json(
+            "cache_json_moka".to_string(),
+            || async {
+                Ok(Test {
+                    test: "test1".to_string(),
+                })
+            },
+            &[],
+        )
+        .await
+        .unwrap();
+    assert_eq!(
+        data,
+        Test {
+            test: "test".to_string(),
+        }
+    );
+
+    cache
+        .invalidate("cache_json_moka".to_string())
+        .await
+        .unwrap();
+}

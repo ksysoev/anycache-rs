@@ -184,3 +184,69 @@ async fn cache_with_ttl_redis() {
         .unwrap();
     assert_eq!(data, "test3".to_string());
 }
+
+#[tokio::test]
+async fn cache_json_redis() {
+    use anycache::redis::RedisStorage;
+    use anycache::Cache;
+    use redis::Client;
+    use serde::{Deserialize, Serialize};
+    use std::env;
+
+    let redis_url = env::var("REDIS_URL").unwrap_or("redis://localhost:6379".to_string());
+    let storage = RedisStorage::new(Client::open(redis_url).unwrap());
+    let cache = Cache::new::<RedisStorage>(storage);
+
+    cache
+        .invalidate("cache_json_redis".to_string())
+        .await
+        .unwrap();
+
+    #[derive(Serialize, Deserialize, PartialEq, Debug)]
+    struct Test {
+        test: String,
+    }
+
+    let data: Test = cache
+        .cache_json(
+            "cache_json_redis".to_string(),
+            || async {
+                Ok(Test {
+                    test: "test".to_string(),
+                })
+            },
+            &[],
+        )
+        .await
+        .unwrap();
+    assert_eq!(
+        data,
+        Test {
+            test: "test".to_string(),
+        }
+    );
+
+    let data: Test = cache
+        .cache_json(
+            "cache_json_redis".to_string(),
+            || async {
+                Ok(Test {
+                    test: "test1".to_string(),
+                })
+            },
+            &[],
+        )
+        .await
+        .unwrap();
+    assert_eq!(
+        data,
+        Test {
+            test: "test".to_string(),
+        }
+    );
+
+    cache
+        .invalidate("cache_json_redis".to_string())
+        .await
+        .unwrap();
+}

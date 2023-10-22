@@ -184,3 +184,67 @@ async fn cache_with_ttl_memcache() {
         .unwrap();
     assert_eq!(data, "test3".to_string());
 }
+
+#[tokio::test]
+async fn cache_json_memcache() {
+    use serde::{Deserialize, Serialize};
+
+    let memcache_url = env::var("MEMCACHED_URL").unwrap_or("localhost:11211".to_string());
+    let stream = TcpStream::connect(memcache_url).expect("Failed to create stream");
+    let memcache = Protocol::new(AllowStdIo::new(stream));
+    let storage = MemcacheStorage::new(memcache);
+    let cache = Cache::new::<MemcacheStorage>(storage);
+
+    cache
+        .invalidate("cache_json_memcache".to_string())
+        .await
+        .unwrap();
+
+    #[derive(Serialize, Deserialize, PartialEq, Debug)]
+    struct Test {
+        test: String,
+    }
+
+    let data: Test = cache
+        .cache_json(
+            "cache_json_memcache".to_string(),
+            || async {
+                Ok(Test {
+                    test: "test".to_string(),
+                })
+            },
+            &[],
+        )
+        .await
+        .unwrap();
+    assert_eq!(
+        data,
+        Test {
+            test: "test".to_string(),
+        }
+    );
+
+    let data: Test = cache
+        .cache_json(
+            "cache_json_memcache".to_string(),
+            || async {
+                Ok(Test {
+                    test: "test1".to_string(),
+                })
+            },
+            &[],
+        )
+        .await
+        .unwrap();
+    assert_eq!(
+        data,
+        Test {
+            test: "test".to_string(),
+        }
+    );
+
+    cache
+        .invalidate("cache_json_memcache".to_string())
+        .await
+        .unwrap();
+}

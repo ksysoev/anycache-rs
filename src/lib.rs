@@ -4,6 +4,8 @@ pub mod redis;
 
 use async_trait::async_trait;
 use futures::channel::oneshot;
+use serde::de::DeserializeOwned;
+use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::future::Future;
 use std::sync::Arc;
@@ -129,6 +131,30 @@ impl<S: Storable> Cache<S> {
                 result
             }
         }
+    }
+
+    pub async fn cache_json<C, F, G, D>(
+        &self,
+        key: String,
+        get_data: C,
+        opts: &[CacheOptions],
+    ) -> Result<D>
+    where
+        F: Future<Output = Result<G>>,
+        C: Fn() -> F,
+        G: Serialize,
+        D: DeserializeOwned,
+    {
+        let wrapper_get_data = || async {
+            let data = get_data().await?;
+            Ok(serde_json::to_string(&data).unwrap())
+        };
+
+        let json_data = self.cache(key, wrapper_get_data, opts).await?;
+
+        let data = serde_json::from_str::<D>(json_data.as_str()).unwrap();
+
+        Ok(data)
     }
 
     /// Invalidate the data associated with the given key.
